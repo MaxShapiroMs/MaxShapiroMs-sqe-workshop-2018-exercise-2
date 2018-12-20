@@ -46,7 +46,7 @@ describe('The javascript parser', () => {
                     '}\n' +
                     'else{\n' +
                     '}\n' +
-                    '}')),
+                    '}','1,5')),
             '\"function func(low,high){\\nlet i=0\\nif(0<high){\\nelse{\\nelse{\\n}\\n}\\n\"'
         );
     });
@@ -69,8 +69,8 @@ describe('The javascript parser', () => {
                 '        c = c + z + 5;\n' +
                 '        return x + y + z + c;\n' +
                 '    }\n' +
-                '}\n')),
-            '\"function foo(x, y, z){\\n    let a =x+1\\n    let b =x+1+y\\n    let c =0\\n    \\n    if (x+1+y<z) {\\nc=0+5\\nreturn x+y + (z) + (0+5)\\n    } else if (x+1+y<z*2) {\\nc=0+x + (5)\\nreturn x+y + (z) + (0+x + (5))\\n    } else {\\nc=0+z + (5)\\nreturn x+y + (z) + (0+z + (5))\\n    }\\n}\\n\"'
+                '}\n','1,1,3')),
+            '\"function foo(x, y, z){\\n    let a =x+1\\n    let b =x+1+y\\n    let c =0\\n    \\n    if (x+1+y<z) {\\nc=0+5\\nreturn x+y + (z) + (0+5)\\n    } else if (x+1+y<z*2) {\\nc=0+x + (5)\\nreturn x+y + (z) + (0+x + (5))\\n    } else {\\nc=0+x + (5)+z + (5)\\nreturn x+y + (z) + (0+x + (5)+z + (5))\\n    }\\n}\\n\"'
         );
     });
 });
@@ -88,48 +88,57 @@ describe('The javascript parser', () => {
                 '    }\n' +
                 '    \n' +
                 '    return z;\n' +
-                '}\n')),
+                '}\n','1,1,3')),
             '\"function foo(x, y, z){\\n    let a =x+1\\n    let b =x+1+y\\n    let c =0\\nc=x+1+x+1+y\\nz=x+1+x+1+y*2\\nreturn z\\n        z = c * 2;\\n    }\\n    \\n    return z;\\n}\\n\"'
         );
     });
 });
 describe('The javascript parser', () => {
-    it('is parsing a simple binaryExpression correctly', () => {
+    it('is parsing a let before function correctly', () => {
         assert.equal(
-            JSON.stringify(symbolizer('let a = 1; a = (1+1)+2;')),
-            '[{"Line":1,"Type":"VariableDeclaration","Name":"a","Condition":"","Value":"1"},{"Line":1,"Type":"AssignmentExpression","Name":"a","Condition":"","Value":"(1) + (1) + (2)"}]'
+            JSON.stringify(symbolizer('let w=0;\n' +
+                'function foo(x, y, z){\n' +
+                '    let a = x + 1;\n' +
+                '    let b = a + y;\n' +
+                '    let c = 0;\n' +
+                '    \n' +
+                '    while (a < z) {\n' +
+                '        c = a + b;\n' +
+                '        z = c * 2;\n' +
+                '    }\n' +
+                '    \n' +
+                '    return z;\n' +
+                '}\n','1,1,1')),
+            '\"let w=0\\nfunction foo(x, y, z){\\n    let a =x+1\\n    let b =x+1+y\\n    let c =0\\nc=x+1+x+1+y\\nz=x+1+x+1+y*2\\nreturn z\\n        z = c * 2;\\n    }\\n    \\n    return z;\\n}\\n\"'
         );
     });
 });
 describe('The javascript parser', () => {
-    it('is parsing a if without else correctly', () => {
+    it('is parsing a string in the inputvector correctly', () => {
         assert.equal(
-            JSON.stringify(symbolizer('if (X < V[mid]){}')),
-            '[{"Line":1,"Type":"IfStatement","Name":"","Condition":"(X) < (V[mid])","Value":""}]'
+            JSON.stringify(symbolizer('function foo(x, y, z){}','"testString","hello","helloAgain"')),
+            '\"function foo(x, y, z){}\\n\"'
         );
     });
 });
 describe('The javascript parser', () => {
-    it('is parsing a binary expression of 2 member expressions in it correctly', () => {
+    it('is parsing a combination of inputs correctly', () => {
         assert.equal(
-            JSON.stringify(symbolizer('let a = 1; a = M[1]+M[2]')),
-            '[{"Line":1,"Type":"VariableDeclaration","Name":"a","Condition":"","Value":"1"},{"Line":1,"Type":"AssignmentExpression","Name":"a","Condition":"","Value":"(M[1]) + (M[2])"}]'
+            JSON.stringify(symbolizer('function foo(x, y, z){\n' +
+                '    let a = x + 1;\n' +
+                '    let b = a + y;\n' +
+                '    let c = 0;\n' +
+                '    \n' +
+                '    if (b < z[2]) {\n' +
+                '        c = c + 5;\n' +
+                '        return x + y + z[1] + c;\n' +
+                '    } else if (b < z[2] * 2) {\n' +
+                '        c = c + x + 5;\n' +
+                '        return x + y + z[1] + c;\n' +
+                '    } else {\n' +
+                '        c = c + z[1] + 5;\nreturn x + y + z[2] + c;\n}\n}\n','1,2,["hello",2,1]')),
+            '\"function foo(x, y, z){\\n    let a =x+1\\n    let b =x+1+y\\n    let c =0\\n    \\n    if (x+1+y<z[2]) {\\nc=0+5\\nreturn x+y + (z[1]) + (0+5)\\n    } else if (x+1+y<z[2]*2) {\\nc=0+x + (5)\\nreturn x+y + (z[1]) + (0+x + (5))\\n    } else {\\nc=0+z[1] + (5)\\nreturn x+y + (z[2]) + (0+z[1] + (5))\\n}\\n}\\n\"'
         );
     });
 });
-describe('The javascript parser', () => {
-    it('is parsing a binary expression that has a member expression in it correctly', () => {
-        assert.equal(
-            JSON.stringify(symbolizer('let a = 1; a = (1+1)+M[2];')),
-            '[{"Line":1,"Type":"VariableDeclaration","Name":"a","Condition":"","Value":"1"},{"Line":1,"Type":"AssignmentExpression","Name":"a","Condition":"","Value":"(1) + (1) + (M[2])"}]'
-        );
-    });
-});
-describe('The javascript parser', () => {
-    it('is parsing a complex if correctly', () => {
-        assert.equal(
-            JSON.stringify(symbolizer('let a = 1; if(a == 1) {a = a + b} else {a = a - b}')),
-            '[{"Line":1,"Type":"VariableDeclaration","Name":"a","Condition":"","Value":"1"},{"Line":1,"Type":"IfStatement","Name":"","Condition":"(a) == (1)","Value":""},{"Line":1,"Type":"AssignmentExpression","Name":"a","Condition":"","Value":"(a) + (b)"},{"Line":1,"Type":"AssignmentExpression","Name":"a","Condition":"","Value":"(a) - (b)"}]'
-        );
-    });
-});
+

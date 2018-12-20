@@ -57,7 +57,7 @@ const parseDataType = {
     'ExpressionStatement': parseExpression,
     'ReturnStatement': parseReturn,
     'WhileStatement': parseWhile,
-    'ForStatement': parseFor,
+    //'ForStatement': parseFor,
     'IfStatement': parseIf,
     'UpdateExpression': parseUpdate,
     'AssignmentExpression': parseAssignment,
@@ -71,6 +71,8 @@ const parseDataType = {
 };
 function parseData(data)
 {
+    getGreenLines();
+    getRedLines();
     for(let i=0;i<data.length;i++) {
         parseDataType[data[i].type](data[i]);
     }
@@ -139,13 +141,13 @@ function parseWhile(data){
     token.push({'Line':data.loc.start.line , 'Type': data.type , 'Name': '' , 'Condition':parseDataType[data.test.type](data.test) , 'Value':''});
     blockExpression(data.body);
 }
-function parseFor(data){
+/*function parseFor(data){
     token.push({'Line':data.loc.start.line , 'Type': data.type , 'Name': '' , 'Condition':parseDataType[data.test.type](data.test) , 'Value':''});
     parseDataType[data.init.type](data.init);
     parseDataType[data.test.type](data.test);
     parseDataType[data.update.type](data.update);
     blockExpression(data.body);
-}
+}*/
 function parseIf(data){
     let colorFlag=determineColor(parseDataType[data.test.type](data.test));
     let ifIndexEnd=getIfEndIndex(originalCode,data.loc.start.line);
@@ -189,16 +191,33 @@ function copyTable(table)
     return temp;
 }
 function determineColor(condition) {
+    let temp;
     for (let key in global_table)
     {
-        condition=condition.replace(key,global_table[key]);
-
+        temp=condition.replace(key,global_table[key]);
+        if(temp.indexOf(',')!=-1)
+            condition=condition.replace(key,getArrayIndex(key,condition[condition.indexOf(key)+2]));
+        else
+            condition=temp;
     }
     if(eval(condition))
         return 'Green';
     else
         return 'Red';
+}
+function getArrayIndex(key,index){
+    if(index==-1)
+        return global_table[key];
 
+    try {
+        if(isNaN(global_table[key][index]))
+            return '"'+global_table[key][index]+'"';
+        else
+            return global_table[key][index];
+    }
+    catch (e) {
+        return eval(global_table[key][index]);
+    }
 }
 function parseUpdate(data){
     return data;
@@ -214,6 +233,10 @@ function parseAssignment(data){
 }
 ////
 function parseBinaryExpression(data){
+    if(data.left==null)
+        return;
+    //eslint-disable-next-line
+    console.log(data.left);
     if(bracesTester(data.left.type))
     {
         return parseDataType[data.left.type](data.left)+data.operator+parseDataType[data.right.type](data.right);
